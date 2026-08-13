@@ -1,0 +1,59 @@
+---
+name: ROS 2 ThreadSanitizer
+description: Build and test a ROS 2 workspace under ThreadSanitizer.
+
+inputs:
+  workspace:
+    description: Colcon workspace root, containing src/.
+    default: .
+  ros-setup:
+    description: setup.bash to source before colcon. Skipped when the file does not exist.
+    default: /opt/ros/${ROS_DISTRO}/setup.bash
+  exclude-packages:
+    description: Regex matched against each package's CMake PROJECT_NAME. Matches build uninstrumented.
+    default: _msgs$
+  packages:
+    description: Package selection arguments passed to both colcon build and colcon test.
+    default: ''
+  build-args:
+    description: Extra arguments for colcon build.
+    default: ''
+  test-args:
+    description: Extra arguments for colcon test.
+    default: ''
+  compiler:
+    description: Compiler driver used to locate the sanitizer runtime library.
+    default: g++
+  skip-build:
+    description: Test an already-instrumented workspace instead of building it.
+    default: 'false'
+  mmap-rnd-bits:
+    description: >
+      vm.mmap_rnd_bits to set before running. Kernels since 6.x default this to 32, more
+      ASLR entropy than TSan's shadow mapping tolerates, and every run dies before main
+      with "unexpected memory mapping". Set empty to skip, on a host already configured
+      or where the runner has no sudo.
+    default: '28'
+
+runs:
+  using: composite
+  steps:
+    # Host-wide and not namespaced, so this also fixes TSan inside any container the
+    # workflow later starts. Harmless to re-apply; the runner VM is discarded after the job.
+    - name: Lower ASLR entropy for ThreadSanitizer
+      if: inputs.mmap-rnd-bits != ''
+      shell: bash
+      run: sudo sysctl -w vm.mmap_rnd_bits=${{ inputs.mmap-rnd-bits }}
+
+    - shell: bash
+      run: ${{ github.action_path }}/../scripts/sanitize.sh
+      env:
+        PRESET: tsan
+        WORKSPACE: ${{ inputs.workspace }}
+        ROS_SETUP: ${{ inputs.ros-setup }}
+        EXCLUDE_PACKAGES: ${{ inputs.exclude-packages }}
+        PACKAGES: ${{ inputs.packages }}
+        BUILD_ARGS: ${{ inputs.build-args }}
+        TEST_ARGS: ${{ inputs.test-args }}
+        COMPILER: ${{ inputs.compiler }}
+        SKIP_BUILD: ${{ inputs.skip-build }}

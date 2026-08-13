@@ -1,0 +1,45 @@
+---
+name: ROS 2 LeakSanitizer
+description: Build and test a ROS 2 workspace under standalone LeakSanitizer.
+
+inputs:
+  workspace:
+    description: Colcon workspace root, containing src/.
+    default: .
+  ros-setup:
+    description: setup.bash to source before colcon. Skipped when the file does not exist.
+    default: /opt/ros/${ROS_DISTRO}/setup.bash
+  exclude-packages:
+    description: Regex matched against each package's CMake PROJECT_NAME. Matches build uninstrumented.
+    default: _msgs$
+  packages:
+    description: Package selection arguments passed to both colcon build and colcon test.
+    default: ''
+  build-args:
+    description: Extra arguments for colcon build.
+    default: ''
+  test-args:
+    description: Extra arguments for colcon test.
+    default: ''
+  compiler:
+    description: Compiler driver used to locate the sanitizer runtime library.
+    default: g++
+  skip-build:
+    description: Test an already-instrumented workspace instead of building it.
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: ${{ github.action_path }}/../scripts/sanitize.sh
+      env:
+        PRESET: lsan
+        WORKSPACE: ${{ inputs.workspace }}
+        ROS_SETUP: ${{ inputs.ros-setup }}
+        EXCLUDE_PACKAGES: ${{ inputs.exclude-packages }}
+        PACKAGES: ${{ inputs.packages }}
+        BUILD_ARGS: ${{ inputs.build-args }}
+        TEST_ARGS: ${{ inputs.test-args }}
+        COMPILER: ${{ inputs.compiler }}
+        SKIP_BUILD: ${{ inputs.skip-build }}
