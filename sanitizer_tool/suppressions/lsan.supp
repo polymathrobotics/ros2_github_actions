@@ -1,0 +1,9 @@
+# Leaks in uninstrumented dependencies. Keep entries narrow; anything in your own code must be fixed.
+leak:libpython3
+leak:libdl
+leak:libddsc
+leak:libcyclonedds
+leak:libfastrtps
+leak:librmw
+leak:libclass_loader
+leak:libtinyxml2

@@ -1,0 +1,9 @@
+# Races reported inside uninstrumented dependencies. TSan cannot see their atomics, so these
+# are noise, not verdicts. Keep entries narrow; anything in your own code must be fixed.
+called_from_lib:libddsc.so
+called_from_lib:libcyclonedds.so
+called_from_lib:libfastrtps.so
+called_from_lib:libpython3.so
+race:libddsc.so
+race:libcyclonedds.so
+race:libfastrtps.so
