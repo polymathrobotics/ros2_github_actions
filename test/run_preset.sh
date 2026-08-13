@@ -24,13 +24,14 @@ declare -A DETECTED_BY=(
   [no_defect]=none
   [excluded_overflow]=none
   [c_heap_overflow]=asan-ubsan
+  [nested_no_defect]=none
 )
 
 mapfile -t CMAKE_ARGS < <(python3 "$ROOT/sanitizer_tool" cmake-args "$PRESET")
 
 # Each source dir is configured on its own, the way colcon configures each package.
 # RelWithDebInfo on purpose: its -O2 must not defeat the preset's -O1 -fno-omit-frame-pointer.
-for source_dir in "$ROOT/test" "$ROOT/test/excluded" "$ROOT/test/pure_c"; do
+for source_dir in "$ROOT/test" "$ROOT/test/excluded" "$ROOT/test/pure_c" "$ROOT/test/nested"; do
   cmake -S "$source_dir" -B "$BUILD/$(basename "$source_dir")" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$BUILD/bin" \

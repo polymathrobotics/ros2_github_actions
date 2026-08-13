@@ -13,6 +13,10 @@ if(NOT ROS2_SANITIZER)
   return()
 endif()
 
+if(NOT PROJECT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+  return()
+endif()
+
 # Excluded packages still build, just uninstrumented. Defaults to message packages
 if(ROS2_SANITIZER_EXCLUDE AND PROJECT_NAME MATCHES "${ROS2_SANITIZER_EXCLUDE}")
   message(STATUS "ros2-sanitizers: skipping ${PROJECT_NAME}")
