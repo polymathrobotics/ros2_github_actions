@@ -70,6 +70,13 @@ else()
   message(FATAL_ERROR "ros2-sanitizers: unknown preset '${ROS2_SANITIZER}'")
 endif()
 
+# GCC's uninitialized analysis does not survive the ASan instrumentation pass and
+# false-positives inside libstdc++ <regex>. Downgraded rather than silenced, and only for
+# GNU, since the option name does not exist in Clang.
+list(APPEND _ros2_sanitizer_common
+  "$<$<COMPILE_LANG_AND_ID:C,GNU>:-Wno-error=maybe-uninitialized>"
+  "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wno-error=maybe-uninitialized>")
+
 message(STATUS "ros2-sanitizers: instrumenting ${PROJECT_NAME} with ${ROS2_SANITIZER}")
 
 add_compile_options(${_ros2_sanitizer_common} ${_ros2_sanitizer_flags})

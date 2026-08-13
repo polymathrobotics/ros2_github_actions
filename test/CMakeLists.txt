@@ -10,6 +10,11 @@ foreach(fixture heap_overflow signed_overflow leak data_race no_defect)
   target_link_libraries(${fixture} PRIVATE Threads::Threads)
 endforeach()
 
+# target_compile_options lands after the directory options this project injects, so a
+# package's own -Werror outranks them.
+add_executable(werror_regex fixtures/werror_regex.cpp)
+target_compile_options(werror_regex PRIVATE -Wall -Wextra -Werror)
+
 # test/excluded is configured as its own top-level project by run_preset.sh, not added
 # here. Colcon configures each package independently, and a nested add_subdirectory would
 # inherit this project's compile options and defeat the exclusion under test.

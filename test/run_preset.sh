@@ -25,6 +25,7 @@ declare -A DETECTED_BY=(
   [excluded_overflow]=none
   [c_heap_overflow]=asan-ubsan
   [nested_no_defect]=none
+  [werror_regex]=none
 )
 
 mapfile -t CMAKE_ARGS < <(python3 "$ROOT/sanitizer_tool" cmake-args "$PRESET")
