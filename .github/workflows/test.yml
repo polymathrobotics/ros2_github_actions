@@ -1,0 +1,59 @@
+---
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  presets:
+    name: ${{ matrix.preset }} on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
+        preset: [asan-ubsan, lsan, tsan]
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Report ASLR entropy
+        run: sudo sysctl -n vm.mmap_rnd_bits
+
+      # Only the tsan preset needs this. Left conditional rather than applied to all so a
+      # regression in the other two surfaces as a failure instead of being papered over.
+      - name: Lower ASLR entropy for ThreadSanitizer
+        if: matrix.preset == 'tsan'
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+
+      - run: test/run_preset.sh ${{ matrix.preset }}
+
+  action:
+    name: action end to end
+    runs-on: ubuntu-26.04
+    container: ros:rolling-ros-base
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build a workspace from the fixtures
+        run: |
+          mkdir -p ws/src/fixture_pkg
+          cp -r test/fixtures ws/src/fixture_pkg/
+          cp test/pkg_CMakeLists.txt ws/src/fixture_pkg/CMakeLists.txt
+
+      # The workspace's only test is a heap overflow, so the action must fail. That failure
+      # is the assertion: it can only happen if the CMake injection, the instrumented
+      # build, the test environment and result reporting all worked.
+      - uses: ./asan
+        id: sanitized
+        continue-on-error: true
+        with:
+          workspace: ws
+
+      - name: Assert the defect was caught
+        run: |-
+          if [[ 'failure' != '${{ steps.sanitized.outcome }}' ]]; then
+            echo "::error::asan action reported ${{ steps.sanitized.outcome }} on a workspace with a known heap overflow"
+            exit 1
+          fi
