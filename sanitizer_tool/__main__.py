@@ -116,8 +116,12 @@ def test_env(preset: dict, compiler: str) -> dict[str, str]:
     preload_lib = preset.get('preload')
     preload = resolve_preload(preload_lib, compiler) if preload_lib is not None else None
     if preload is not None:
-        inherited = os.environ.get('LD_PRELOAD', '').strip()
-        env['LD_PRELOAD'] = f'{preload}:{inherited}' if inherited else preload
+        # libstdc++ rides along because the runtime resolves the real __cxa_throw with
+        # dlsym(RTLD_NEXT) while it initializes. python3 links no libstdc++, so without this
+        # the symbol stays null and the first C++ exception thrown by anything python dlopens
+        # (rclpy's pybind11 module) aborts inside the interceptor instead of reaching python.
+        chain = [preload, resolve_preload('libstdc++.so.6', compiler), os.environ.get('LD_PRELOAD', '').strip()]
+        env['LD_PRELOAD'] = ':'.join(entry for entry in chain if entry)
 
     return env
 
