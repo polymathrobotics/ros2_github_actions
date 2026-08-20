@@ -10,6 +10,10 @@ foreach(fixture heap_overflow signed_overflow leak data_race no_defect)
   target_link_libraries(${fixture} PRIVATE Threads::Threads)
 endforeach()
 
+# Loaded by python_throw, so the runtime reaches the
+# process through LD_PRELOAD instead of the executable.
+add_library(python_throw MODULE fixtures/python_throw.cpp)
+
 # target_compile_options lands after the directory options this project injects, so a
 # package's own -Werror outranks them.
 add_executable(werror_regex fixtures/werror_regex.cpp)

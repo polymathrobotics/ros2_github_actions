@@ -26,6 +26,14 @@ declare -A DETECTED_BY=(
   [c_heap_overflow]=asan-ubsan
   [nested_no_defect]=none
   [werror_regex]=none
+  [python_throw]=none
+)
+
+# python_throw is the only fixture a preset can be excused from: it runs python3, which lsan
+# reports interpreter leaks for and tsan cannot dlopen an instrumented library into at all
+# ("cannot allocate memory in static TLS block"), the gap tsan preloading nothing admits to.
+declare -A EXCUSED_PRESETS=(
+  [python_throw]='lsan tsan'
 )
 
 mapfile -t CMAKE_ARGS < <(python3 "$ROOT/sanitizer_tool" cmake-args "$PRESET")
@@ -36,6 +44,7 @@ for source_dir in "$ROOT/test" "$ROOT/test/excluded" "$ROOT/test/pure_c" "$ROOT/
   cmake -S "$source_dir" -B "$BUILD/$(basename "$source_dir")" \
     -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="$BUILD/bin" \
+    -DCMAKE_LIBRARY_OUTPUT_DIRECTORY="$BUILD/bin" \
     "${CMAKE_ARGS[@]}" >> "$BUILD/configure.log"
   cmake --build "$BUILD/$(basename "$source_dir")" --parallel > /dev/null
 done
@@ -44,14 +53,26 @@ grep 'ros2-sanitizers:' "$BUILD/configure.log"
 eval "$(python3 "$ROOT/sanitizer_tool" test-env "$PRESET")"
 
 failures=0
+ran=0
 for fixture in "${!DETECTED_BY[@]}"; do
+  if [[ " ${EXCUSED_PRESETS[$fixture]:-} " == *" $PRESET "* ]]; then
+    echo "skip     $fixture (not applicable under $PRESET)"
+    continue
+  fi
+  ran=$((ran + 1))
+
   expected=no
   if [[ "${DETECTED_BY[$fixture]}" == "$PRESET" ]]; then
     expected=yes
   fi
 
+  command=("$BUILD/bin/$fixture")
+  if [[ python_throw == "$fixture" ]]; then
+    command=(python3 "$ROOT/test/fixtures/python_throw.py" "$BUILD/bin/lib$fixture.so")
+  fi
+
   status=0
-  output="$("$BUILD/bin/$fixture" 2>&1)" || status=$?
+  output="$("${command[@]}" 2>&1)" || status=$?
 
   detected=no
   if [[ 0 -ne $status ]]; then
@@ -67,5 +88,5 @@ for fixture in "${!DETECTED_BY[@]}"; do
   fi
 done
 
-echo "$failures failure(s) across ${#DETECTED_BY[@]} fixtures under $PRESET"
+echo "$failures failure(s) across $ran fixtures under $PRESET"
 [[ 0 -eq $failures ]]
