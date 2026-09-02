@@ -37,9 +37,11 @@ PRESETS = {
     },
     'lsan': {
         'summary': 'Standalone leak detection. GCC and clang. Nightly.',
-        'preload': 'liblsan.so',
+        'preload': None,
         'options': {
-            'LSAN_OPTIONS': ['print_suppressions=0', 'report_objects=1'],
+            # report_objects enumerates every leaked allocation, a firehose on any ROS
+            # process; the deduplicated leak stacks it prints without it are enough.
+            'LSAN_OPTIONS': ['print_suppressions=0'],
         },
         'suppressions': {'LSAN_OPTIONS': 'lsan.supp'},
     },
