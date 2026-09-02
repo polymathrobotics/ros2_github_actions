@@ -66,6 +66,13 @@ elseif(ROS2_SANITIZER STREQUAL "lsan")
   set(_ros2_sanitizer_flags -fsanitize=leak)
 elseif(ROS2_SANITIZER STREQUAL "tsan")
   set(_ros2_sanitizer_flags -fsanitize=thread)
+  # asio's std_fenced_block calls std::atomic_thread_fence, which GCC cannot instrument
+  # under TSan and reports as -Wtsan. The fence is third-party and unactionable, so a
+  # -Werror package must still build.
+  # GNU-only as Clang has no -Wtsan.
+  list(APPEND _ros2_sanitizer_common
+    "$<$<COMPILE_LANG_AND_ID:C,GNU>:-Wno-error=tsan>"
+    "$<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Wno-error=tsan>")
 else()
   message(FATAL_ERROR "ros2-sanitizers: unknown preset '${ROS2_SANITIZER}'")
 endif()
