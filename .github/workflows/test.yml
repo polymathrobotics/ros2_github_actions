@@ -1,0 +1,50 @@
+---
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  presets:
+    name: ${{ matrix.preset }} on ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, ubuntu-24.04, ubuntu-26.04]
+        preset: [asan-ubsan]
+    steps:
+      - uses: actions/checkout@v6
+
+      - run: test/run_preset.sh ${{ matrix.preset }}
+
+  action:
+    name: action end to end
+    runs-on: ubuntu-26.04
+    container: ros:rolling-ros-base
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build a workspace from the fixtures
+        run: |
+          mkdir -p ws/src/fixture_pkg
+          cp -r test/fixtures ws/src/fixture_pkg/
+          cp test/pkg_CMakeLists.txt ws/src/fixture_pkg/CMakeLists.txt
+
+      # The workspace's only test is a heap overflow, so the action must fail. That failure
+      # is the assertion: it can only happen if the CMake injection, the instrumented
+      # build, the test environment and result reporting all worked.
+      - uses: ./asan
+        id: sanitized
+        continue-on-error: true
+        with:
+          workspace: ws
+
+      - name: Assert the defect was caught
+        run: |-
+          if [[ 'failure' != '${{ steps.sanitized.outcome }}' ]]; then
+            echo "::error::asan action reported ${{ steps.sanitized.outcome }} on a workspace with a known heap overflow"
+            exit 1
+          fi

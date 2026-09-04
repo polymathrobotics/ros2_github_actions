@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.16)
+
+# A plain CMake package, which colcon discovers from CMakeLists.txt alone. Used by the
+# end-to-end workflow to drive the action through a real colcon build and test.
+project(fixture_pkg CXX)
+
+enable_testing()
+
+add_executable(heap_overflow_test fixtures/heap_overflow.cpp)
+add_test(NAME heap_overflow COMMAND heap_overflow_test)
